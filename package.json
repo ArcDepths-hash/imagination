@@ -1,1 +1,23 @@
-
+{
+  "name": "multi-process-discord-bot",
+  "version": "1.0.0",
+  "description": "A multi-process modular Discord bot managed via PM2 on Railway.",
+  "main": "bot.js",
+  "scripts": {
+    "start": "pm2-runtime start ecosystem.config.js"
+  },
+  "keywords": [
+    "discord",
+    "pm2",
+    "bot",
+    "railway"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.4.5",
+    "mongoose": "^8.2.1",
+    "pm2": "^5.3.1"
+  }
+}
