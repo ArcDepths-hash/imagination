@@ -1,8 +1,6 @@
 const { EmbedBuilder, PermissionsBitField } = require('discord.js');
 const mongoose = require('mongoose');
 
-// --- DATABASE SCHEMAS ---
-// Reuse existing models or register them if they don't exist yet
 const Config = mongoose.models.Config || mongoose.model('Config', new mongoose.Schema({
     guildId: { type: String, required: true, unique: true },
     prefix: { type: String, default: '!' }
@@ -13,17 +11,8 @@ const StaffRoster = mongoose.models.StaffRoster || mongoose.model('StaffRoster',
     userId: { type: String, required: true }
 }));
 
-// Fallback initialization check for indexes if model was just compiled
-if (mongoose.models.StaffRoster) {
-    StaffRoster.schema.index({ guildId: 1, userId: 1 }, { unique: true });
-}
-
-// Access the global client already loaded into the Node process memory
-const client = global.client || require('discord.js').Client.prototype; 
-
 console.log('🛡️ Staff Operations Module injected successfully into master core.');
 
-// Listen directly to the active message channel thread
 process.on('messageCreateRoute', async (message) => {
     if (message.author.bot || !message.guild) return;
 
@@ -39,27 +28,18 @@ process.on('messageCreateRoute', async (message) => {
 
     const subCommand = args[0]?.toLowerCase();
     const isServerAdmin = message.member.permissions.has(PermissionsBitField.Flags.Administrator);
-    
-    // Check if the user is registered in the database staff roster
     const isRegisteredStaff = await StaffRoster.findOne({ guildId: message.guild.id, userId: message.author.id });
 
-    // --- SECURITY GATE ---
-    // Anyone can view the log, but you must be Admin OR Registered Staff to run anything else
     if (!isServerAdmin && !isRegisteredStaff) {
         return message.reply('❌ **ACCESS DENIED:** You are not on the registered Staff roster.');
     }
 
     try {
-        // 📋 !staff log -> Shows everyone added to the staff database
         if (subCommand === 'log') {
             const roster = await StaffRoster.find({ guildId: message.guild.id });
-
-            if (roster.length === 0) {
-                return message.reply('📝 **Staff Roster:** No staff members have been registered yet.');
-            }
+            if (roster.length === 0) return message.reply('📝 **Staff Roster:** No staff members have been registered yet.');
 
             const staffList = roster.map((member, index) => `${index + 1}. <@${member.userId}> (ID: \`${member.userId}\`)`).join('\n');
-
             const rosterEmbed = new EmbedBuilder()
                 .setColor('#3498DB')
                 .setTitle('📋 Registered Staff Roster')
@@ -69,10 +49,8 @@ process.on('messageCreateRoute', async (message) => {
             return message.reply({ embeds: [rosterEmbed] });
         }
 
-        // ➕ !staff add @user -> Adds a member to the roster (Admin Only)
         if (subCommand === 'add') {
             if (!isServerAdmin) return message.reply('❌ Only server administrators can add members to the roster.');
-            
             const targetUser = message.mentions.users.first() || await message.client.users.fetch(args[1]).catch(() => null);
             if (!targetUser) return message.reply(`❌ **Usage:** \`${currentPrefix}staff add @user\``);
 
@@ -83,10 +61,8 @@ process.on('messageCreateRoute', async (message) => {
             return message.reply(`✅ Added **${targetUser.username}** to the registered staff list.`);
         }
 
-        // ➖ !staff remove @user -> Removes a member from the roster (Admin Only)
         if (subCommand === 'remove') {
             if (!isServerAdmin) return message.reply('❌ Only server administrators can remove members from the roster.');
-
             const targetUser = message.mentions.users.first() || await message.client.users.fetch(args[1]).catch(() => null);
             if (!targetUser) return message.reply(`❌ **Usage:** \`${currentPrefix}staff remove @user\``);
 
@@ -95,7 +71,6 @@ process.on('messageCreateRoute', async (message) => {
 
             return message.reply(`🗑️ Removed **${targetUser.username}** from the registered staff list.`);
         }
-
     } catch (err) {
         console.error(err);
         return message.reply('❌ An error occurred while managing the staff database.');
