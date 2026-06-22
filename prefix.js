@@ -1,38 +1,25 @@
-require('dotenv').config();
-const { 
-    Client, 
-    GatewayIntentBits, 
-    PermissionsBitField, 
-    EmbedBuilder, 
-    ActionRowBuilder, 
-    StringSelectMenuBuilder, 
-    StringSelectMenuOptionBuilder 
-} = require('discord.js');
+const { PermissionsBitField, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
 const mongoose = require('mongoose');
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
-const DEFAULT_PREFIX = '!';
-
+// --- DATABASE SCHEMAS ---
 const Config = mongoose.models.Config || mongoose.model('Config', new mongoose.Schema({
     guildId: { type: String, required: true, unique: true },
     prefix: { type: String, default: '!' }
 }));
 
-// Connect to the same Staff Roster model
 const StaffRoster = mongoose.models.StaffRoster || mongoose.model('StaffRoster', new mongoose.Schema({
     guildId: { type: String, required: true },
     userId: { type: String, required: true }
 }));
 
-if (process.env.MONGO_URI) mongoose.connect(process.env.MONGO_URI).catch(err => console.error(err));
+console.log('🔀 Prefix Module injected successfully into master core.');
 
-client.once('ready', () => console.log(`🔀 Prefix Node Connected: ${client.user.tag}`));
-
-client.on('messageCreate', async (message) => {
+// --- CHAT MESSAGE ROUTER ---
+process.on('messageCreateRoute', async (message) => {
     if (message.author.bot || !message.guild) return;
 
     let settings = await Config.findOne({ guildId: message.guild.id });
-    const currentPrefix = settings?.prefix || DEFAULT_PREFIX;
+    const currentPrefix = settings?.prefix || '!';
 
     if (!message.content.startsWith(currentPrefix)) return;
 
@@ -85,8 +72,8 @@ client.on('messageCreate', async (message) => {
     }
 });
 
-// DROPDOWN INTERACTION UPDATE
-client.on('interactionCreate', async (interaction) => {
+// --- DROPDOWN INTERACTION ROUTER ---
+process.on('interactionCreateRoute', async (interaction) => {
     if (!interaction.isStringSelectMenu() || interaction.customId !== 'prefix_dropdown_select') return;
 
     const isServerAdmin = interaction.member.permissions.has(PermissionsBitField.Flags.Administrator);
@@ -111,5 +98,3 @@ client.on('interactionCreate', async (interaction) => {
 
     await interaction.editReply({ embeds: [updatedEmbed], components: [] });
 });
-
-client.login(process.env.DISCORD_TOKEN);
