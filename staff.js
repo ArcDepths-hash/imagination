@@ -1,29 +1,8 @@
-require('dotenv').config();
-const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField } = require('discord.js');
+const { EmbedBuilder, PermissionsBitField } = require('discord.js');
 const mongoose = require('mongoose');
 
-const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers
-    ]
-});
-
-const DEFAULT_PREFIX = '!';
-
-// DATABASE CONNECTION
-if (!process.env.MONGO_URI) {
-    console.error('❌ Error: MONGO_URI is missing from Railway variables!');
-    process.exit(1);
-}
-
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('🛡️ Staff System Node connected to MongoDB!'))
-    .catch(err => console.error('❌ MongoDB Connection Error (Staff):', err));
-
-// SCHEMAS
+// --- DATABASE SCHEMAS ---
+// Reuse existing models or register them if they don't exist yet
 const Config = mongoose.models.Config || mongoose.model('Config', new mongoose.Schema({
     guildId: { type: String, required: true, unique: true },
     prefix: { type: String, default: '!' }
@@ -33,17 +12,23 @@ const StaffRoster = mongoose.models.StaffRoster || mongoose.model('StaffRoster',
     guildId: { type: String, required: true },
     userId: { type: String, required: true }
 }));
-StaffRoster.index({ guildId: 1, userId: 1 }, { unique: true });
 
-client.once('ready', () => {
-    console.log(`🛡️ Staff Operations Node Active: ${client.user.tag}`);
-});
+// Fallback initialization check for indexes if model was just compiled
+if (mongoose.models.StaffRoster) {
+    StaffRoster.schema.index({ guildId: 1, userId: 1 }, { unique: true });
+}
 
-client.on('messageCreate', async (message) => {
+// Access the global client already loaded into the Node process memory
+const client = global.client || require('discord.js').Client.prototype; 
+
+console.log('🛡️ Staff Operations Module injected successfully into master core.');
+
+// Listen directly to the active message channel thread
+process.on('messageCreateRoute', async (message) => {
     if (message.author.bot || !message.guild) return;
 
     const settings = await Config.findOne({ guildId: message.guild.id });
-    const currentPrefix = settings?.prefix || DEFAULT_PREFIX;
+    const currentPrefix = settings?.prefix || '!';
 
     if (!message.content.startsWith(currentPrefix)) return;
 
@@ -88,7 +73,7 @@ client.on('messageCreate', async (message) => {
         if (subCommand === 'add') {
             if (!isServerAdmin) return message.reply('❌ Only server administrators can add members to the roster.');
             
-            const targetUser = message.mentions.users.first() || await client.users.fetch(args[1]).catch(() => null);
+            const targetUser = message.mentions.users.first() || await message.client.users.fetch(args[1]).catch(() => null);
             if (!targetUser) return message.reply(`❌ **Usage:** \`${currentPrefix}staff add @user\``);
 
             const existing = await StaffRoster.findOne({ guildId: message.guild.id, userId: targetUser.id });
@@ -102,7 +87,7 @@ client.on('messageCreate', async (message) => {
         if (subCommand === 'remove') {
             if (!isServerAdmin) return message.reply('❌ Only server administrators can remove members from the roster.');
 
-            const targetUser = message.mentions.users.first() || await client.users.fetch(args[1]).catch(() => null);
+            const targetUser = message.mentions.users.first() || await message.client.users.fetch(args[1]).catch(() => null);
             if (!targetUser) return message.reply(`❌ **Usage:** \`${currentPrefix}staff remove @user\``);
 
             const result = await StaffRoster.deleteOne({ guildId: message.guild.id, userId: targetUser.id });
@@ -116,5 +101,3 @@ client.on('messageCreate', async (message) => {
         return message.reply('❌ An error occurred while managing the staff database.');
     }
 });
-
-client.login(process.env.DISCORD_TOKEN);
