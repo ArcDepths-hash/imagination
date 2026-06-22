@@ -4,23 +4,45 @@ http.createServer((req, res) => res.end('Master System Launcher Online!')).liste
 console.log('🌐 Web listener initialized for Render free tier.');
 // ------------------------------------
 
+require('dotenv').config();
+const { Client, GatewayIntentBits } = require('discord.js');
+const mongoose = require('mongoose');
+
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers
+    ]
+});
+
+// Shared Database Connection
+mongoose.connect(process.env.MONGO_URI)
+    .then(() => console.log('🍃 Core database link active.'))
+    .catch(err => console.error('❌ MongoDB Global Connection Error:', err));
+
+global.client = client;
+
 console.log('📡 Launching all microservice files...');
 
-try {
-    // This forces Render to read and execute your other files
-    require('./prefix.js');
-    console.log('✅ prefix.js loaded successfully.');
-    
-    require('./staff.js');
-    console.log('✅ staff.js loaded successfully.');
-    
-    require('./moderation.js');
-    console.log('✅ moderation.js loaded successfully.');
-    
-    require('./rankup.js');
-    console.log('✅ rankup.js loaded successfully.');
+// Load all microservice code scripts into process memory
+require('./prefix.js');
+require('./staff.js');
+require('./moderation.js');
+require('./rankup.js');
 
-    console.log('🚀 All systems are actively running inside Render!');
-} catch (err) {
-    console.error('🚨 Error launching microservice files:', err);
-}
+// Route data streams cleanly down to the modules via process emitters
+client.on('messageCreate', (message) => {
+    process.emit('messageCreateRoute', message);
+});
+
+client.on('interactionCreate', (interaction) => {
+    process.emit('interactionCreateRoute', interaction);
+});
+
+client.once('ready', () => {
+    console.log(`🚀 Master Launcher Online: ${client.user.tag}`);
+});
+
+client.login(process.env.DISCORD_TOKEN);
