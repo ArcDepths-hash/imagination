@@ -1,1 +1,40 @@
-
+module.exports = {
+  apps: [
+    {
+      name: 'main-bot',
+      script: 'bot.js', // Cleaned: no ./ needed
+      autorestart: true,
+      max_memory_restart: '1G',
+      env: {
+        NODE_ENV: 'production',
+      }
+    },
+    {
+      name: 'prefix-bot',
+      script: 'prefix.js',
+      autorestart: true,
+      max_memory_restart: '1G',
+      env: {
+        NODE_ENV: 'production',
+      }
+    },
+    {
+      name: 'moderation-bot',
+      script: 'moderation.js',
+      autorestart: true,
+      max_memory_restart: '1G',
+      env: {
+        NODE_ENV: 'production',
+      }
+    },
+    {
+      name: 'rankup-bot',
+      script: 'rankup.js',
+      autorestart: true,
+      max_memory_restart: '1G',
+      env: {
+        NODE_ENV: 'production',
+      }
+    }
+  ]
+};
