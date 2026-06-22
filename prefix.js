@@ -1,7 +1,6 @@
 const { PermissionsBitField, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
 const mongoose = require('mongoose');
 
-// --- DATABASE SCHEMAS ---
 const Config = mongoose.models.Config || mongoose.model('Config', new mongoose.Schema({
     guildId: { type: String, required: true, unique: true },
     prefix: { type: String, default: '!' }
@@ -14,7 +13,6 @@ const StaffRoster = mongoose.models.StaffRoster || mongoose.model('StaffRoster',
 
 console.log('🔀 Prefix Module injected successfully into master core.');
 
-// --- CHAT MESSAGE ROUTER ---
 process.on('messageCreateRoute', async (message) => {
     if (message.author.bot || !message.guild) return;
 
@@ -28,7 +26,6 @@ process.on('messageCreateRoute', async (message) => {
 
     if (command !== 'prefix') return;
 
-    // --- INTEGRATED HYBRID SECURITY CHECK ---
     const isServerAdmin = message.member.permissions.has(PermissionsBitField.Flags.Administrator);
     const isRegisteredStaff = await StaffRoster.findOne({ guildId: message.guild.id, userId: message.author.id });
 
@@ -45,7 +42,7 @@ process.on('messageCreateRoute', async (message) => {
             .setTitle('⚙️ Prefix Configuration Node')
             .setDescription(
                 `Current prefix is: **${currentPrefix}**\n\n` +
-                `u can change it using:\n` +
+                `You can change it using:\n` +
                 `\`${currentPrefix}prefix change <newPrefix>\`\n\n` +
                 `or use the dropdown menu below!`
             );
@@ -72,7 +69,6 @@ process.on('messageCreateRoute', async (message) => {
     }
 });
 
-// --- DROPDOWN INTERACTION ROUTER ---
 process.on('interactionCreateRoute', async (interaction) => {
     if (!interaction.isStringSelectMenu() || interaction.customId !== 'prefix_dropdown_select') return;
 
